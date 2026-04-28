@@ -69,8 +69,8 @@ The model was evaluated using:
 | Metric | Training Set | Test Set |
 |--------|-------------|----------|
 | **Accuracy** | 100% | 86% |
-| **Precision** (Stroke) | — | 38% |
-| **Recall** (Stroke) | — | 32% |
+| **Precision** (Stroke) |100% | 38% |
+| **Recall** (Stroke) | 100% | 32% |
 
 ### Key Observations
 
