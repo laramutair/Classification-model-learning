@@ -33,60 +33,84 @@ A machine learning project that builds a classification model to predict the lik
 ---
 
 ## Class Imbalance
+The dataset is highly imbalanced:
+- ~88% No Stroke (0)
+- ~12% Stroke (1)
 
-The dataset is highly **imbalanced**:
-- **~88%** No Stroke (0)
-- **~12%** Stroke (1)
-
-This means accuracy alone is a misleading metric, the model can score high by simply predicting the majority class. Metrics like **Recall** and **Precision** are more meaningful here.
+Accuracy alone is a misleading metric. Recall Macro is more meaningful 
+for model comparison, as it treats both classes equally and is consistent 
+with the GridSearchCV scoring metric used during tuning.
 
 ---
 
 ## Project Pipeline
 
 ### 1. Data Preparation
-- Set `id` as the DataFrame index (not dropped, preserved for reference)
-- Checked and handled missing values in `bmi` using `SimpleImputer`
+- Set `id` as the DataFrame index
+- Handled missing values in `bmi` using `SimpleImputer` (median strategy)
 - Encoded categorical features using `OneHotEncoder`
 - Scaled numerical features using `StandardScaler`
 - Used `ColumnTransformer` to build a clean preprocessing pipeline
 
 ### 2. Modeling
-- Model used: **Decision Tree Classifier** (default parameters)
-- Split: Train / Test using `train_test_split`
-- Pipeline: `Preprocessor → DecisionTreeClassifier`
+Three classification algorithms were tested, each evaluated with default 
+parameters and then tuned using `GridSearchCV` with `scoring='recall_macro'`
+and `cv=3`.
 
-### 3. Evaluation
-The model was evaluated using:
-- Accuracy (Train & Test)
-- Confusion Matrix (Raw Counts + Normalized)
-- Classification Report (Precision, Recall, F1-Score)
+| Model | Strategy |
+|---|---|
+| Decision Tree | Default only (baseline) |
+| Logistic Regression | Default + GridSearchCV tuning |
+| K-Nearest Neighbors | Default + GridSearchCV tuning |
+| Random Forest | Default + GridSearchCV tuning |
+
+### 3. Hyperparameter Tuning
+**Logistic Regression:**
+- Tuned: solver, penalty (l1/l2/elasticnet/None), C values, class_weight
+- Best: solver=saga, penalty=l1, C=0.1, class_weight=balanced
+
+**KNN:**
+- Tuned: n_neighbors, metric
+- Best: metric=manhattan, n_neighbors=3
+
+**Random Forest:**
+- Tuned: n_estimators, max_depth, min_samples_split, class_weight
+- Best: class_weight=balanced, max_depth=5, min_samples_split=10, n_estimators=200
 
 ---
 
 ## Results
 
+### Baseline - Decision Tree (Default)
 | Metric | Training Set | Test Set |
-|--------|-------------|----------|
-| **Accuracy** | 100% | 86% |
-| **Precision** (Stroke) |100% | 38% |
-| **Recall** (Stroke) | 100% | 32% |
+|---|---|---|
+| Accuracy | 100% | 86% |
+| Precision (Stroke) | 100% | 38% |
+| Recall (Stroke) | 100% | 32% |
 
-### Key Observations
+### Model Comparison (Test Set - Tuned Models)
+| Model | Recall Macro | Recall (Stroke) | Accuracy |
+|---|---|---|---|
+| **Logistic Regression** ✅ | **0.75** | **0.76** | 0.74 |
+| Random Forest | 0.69 | 0.59 | 0.76 |
+| KNN | 0.52 | 0.09 | 0.85 |
 
-- The **100% training accuracy** vs **86% test accuracy** indicates clear **overfitting**
-- The **86% test accuracy is misleading** due to class imbalance, the model can achieve high accuracy by predicting "No Stroke" most of the time
-- **Precision = 38%**: When the model predicted a stroke, it was correct only 38% of the time
-- **Recall = 32%**: The model correctly identified only 32% of actual stroke patients, missing 68% of real cases
+---
+
+## Recommended Model: Tuned Logistic Regression
+
+The Tuned Logistic Regression achieved the highest Recall Macro (0.75),
+correctly identifying 76% of real stroke patients.
+
+In a medical context, **Recall is the most critical metric**, a missed 
+stroke can lead to death or severe disability, while a false alarm only 
+results in further testing.
 
 ---
 
-## Most Important Metric: Recall
-
-> In a medical context, **Recall** is the most critical metric.
-
-A **False Negative** (missing a real stroke patient) is far more dangerous than a **False Positive**. A missed stroke can lead to death, while a false alarm only results in further testing.
-
-Therefore, optimizing for **Recall** ensures we catch as many actual stroke cases as possible.
-
----
+## Key Observations
+- Decision Tree showed clear **overfitting** (100% train vs 86% test accuracy)
+- KNN had high accuracy (85%) but nearly **failed to detect strokes** (recall=0.09)
+- Using `class_weight='balanced'` significantly improved stroke detection
+- **Accuracy is misleading** with imbalanced data, Recall Macro is the 
+  appropriate metric for this problem
